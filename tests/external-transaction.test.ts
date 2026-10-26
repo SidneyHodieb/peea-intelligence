@@ -15,8 +15,13 @@ async function count(table: string) { return Number((await db.query<{ n: number 
 
 beforeAll(async () => {
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(await readFile("supabase/migrations/202610260001_initial_schema.sql", "utf8"));
-  await db.exec(await readFile("supabase/migrations/202610260002_external_atomic_writes.sql", "utf8"));
+  const legacySchema = (await readFile("supabase/migrations/202610260001_initial_schema.sql", "utf8"))
+    .replaceAll(" default gen_random_uuid()", "")
+    .replace("id bigint generated always as identity primary key", "id uuid primary key")
+    .replace("name text not null unique", "name text not null")
+    .replace("canonical_url text not null unique", "canonical_url text not null");
+  await db.exec(legacySchema);
+  await db.exec(await readFile("supabase/migrations/20261026165637_external_atomic_writes.sql", "utf8"));
 }, 30_000);
 afterAll(async () => { await db.close(); });
 
@@ -24,6 +29,12 @@ describe("real PostgreSQL external write transaction", () => {
   it("validates a dry run with no persisted domain rows", async () => {
     expect(await write("event", event, proof, null, true)).toMatchObject({ valid: true, dry_run: true, created: true });
     for (const table of ["sources", "source_items", "source_versions", "publications", "events", "event_mentions", "audit_logs", "external_write_limits", "external_write_receipts"]) expect(await count(table)).toBe(0);
+  });
+  it("reconciles legacy UUID defaults and missing unique indexes without replacing IDs", async () => {
+    const audit = await db.query<{ data_type: string; column_default: string }>("select data_type,column_default from information_schema.columns where table_schema='public' and table_name='audit_logs' and column_name='id'");
+    expect(audit.rows[0]).toMatchObject({ data_type: "uuid", column_default: "gen_random_uuid()" });
+    const indexes = await db.query("select indexname from pg_indexes where indexname in ('sources_external_name_unique','source_items_external_url_unique')");
+    expect(indexes.rows).toHaveLength(2);
   });
   it("commits a complete event and returns its persisted data", async () => {
     const result = await write("event", event, proof);

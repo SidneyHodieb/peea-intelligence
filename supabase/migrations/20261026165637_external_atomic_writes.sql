@@ -1,5 +1,25 @@
 -- Apply before deploying the new API. No existing domain rows are deleted.
 begin;
+set local lock_timeout = '5s';
+
+-- The deployed legacy schema has UUID primary keys without defaults, including
+-- audit_logs.id (the repository baseline uses a bigint identity for that table).
+-- Only fill missing UUID defaults; never replace a pre-existing default/type.
+do $$
+declare target text;
+begin
+  for target in select table_name from information_schema.columns
+    where table_schema = 'public' and column_name = 'id' and data_type = 'uuid'
+      and column_default is null and table_name = any(array[
+        'sources','source_items','source_versions','organizations','publications','events','event_changes','audit_logs'])
+  loop
+    execute format('alter table public.%I alter column id set default gen_random_uuid()',target);
+  end loop;
+end;
+$$;
+-- Abort safely on pre-existing duplicate names/URLs; never delete/merge data here.
+create unique index if not exists sources_external_name_unique on public.sources(name);
+create unique index if not exists source_items_external_url_unique on public.source_items(canonical_url);
 
 create table if not exists public.external_write_limits (
   actor text not null, bucket timestamptz not null, writes integer not null,

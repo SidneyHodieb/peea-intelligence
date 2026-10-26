@@ -2,7 +2,7 @@
 
 ## Déploiement et accès
 
-1. Appliquer `supabase/migrations/202610260002_external_atomic_writes.sql` sur la base de production **avant** de déployer ce code. Elle ajoute une transaction RPC et un compteur de débit ; elle ne supprime aucun événement ni publication.
+1. Appliquer `supabase/migrations/20261026165637_external_atomic_writes.sql` sur la base de production **avant** de déployer ce code. Elle ajoute une transaction RPC et un compteur de débit ; elle ne supprime aucun événement ni publication.
 2. Configurer `EXTERNAL_API_TOKEN` côté serveur et sur chaque collecteur. À défaut, `INTERNAL_API_TOKEN` est utilisé. Aucun secret ne doit être commité ni envoyé au frontend.
 3. Tester les collecteurs avec `Authorization: Bearer <jeton>` puis déployer. Les anciennes requêtes anonymes seront refusées : ce changement exige une transition coordonnée.
 4. Contrôler d’abord un dry run, puis une écriture autorisée et sa relecture. Aucun test fictif ne doit être ajouté à la production.
