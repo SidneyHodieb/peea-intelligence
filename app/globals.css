@@ -46,6 +46,10 @@ button { cursor: pointer; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .status-dot { box-shadow: 0 0 0 4px currentColor; }
 
+/* Les cartes de décision restent centrées sur l'opportunité ; les détails de
+   vérification sont disponibles dans la fiche ouverte par l'utilisateur. */
+.card > .mt-4:has(> span.rounded-full) { display: none; }
+
 @media (max-width: 1023px) {
   .desktop-sidebar { display: none; }
 }
