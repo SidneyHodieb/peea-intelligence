@@ -1,0 +1,38 @@
+{
+  "name": "peea-intelligence-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "worker:discovery": "node --env-file-if-exists=.env.local --import tsx workers/discovery/run.ts",
+    "worker:ingest": "node --env-file-if-exists=.env.local --import tsx workers/discovery/ingest.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.79.0",
+    "cheerio": "^1.1.2",
+    "date-fns": "^4.1.0",
+    "fast-xml-parser": "^5.3.1",
+    "lucide-react": "^0.545.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^22.18.8",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

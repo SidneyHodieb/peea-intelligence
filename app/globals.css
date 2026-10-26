@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --gold: 44 99% 47%;
+  --gold-light: 40 98% 55%;
+  --gold-dark: 40 98% 32%;
+  --ink: 32 94% 12%;
+  --forest: 151 56% 22%;
+  --ivory: 40 30% 96%;
+  --paper: 42 60% 98%;
+  --line: 40 30% 88%;
+}
+
+* { box-sizing: border-box; }
+html { background: hsl(var(--ivory)); }
+body {
+  margin: 0;
+  color: hsl(var(--ink));
+  background:
+    radial-gradient(circle at 92% 2%, hsl(var(--gold) / .13), transparent 28rem),
+    hsl(var(--ivory));
+  font-family: var(--font-sans), sans-serif;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+::selection { background: hsl(var(--gold) / .35); }
+
+.font-display { font-family: var(--font-display), serif; }
+.sidebar {
+  background:
+    linear-gradient(180deg, rgba(38,25,7,.96), rgba(25,20,12,.99)),
+    repeating-linear-gradient(45deg, transparent 0 12px, rgba(255,255,255,.02) 12px 13px);
+}
+.card {
+  border: 1px solid hsl(var(--line));
+  background: rgba(255,255,255,.84);
+  box-shadow: 0 16px 46px rgba(63,42,4,.055);
+}
+.soft-grid {
+  background-image:
+    linear-gradient(hsl(var(--line) / .36) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--line) / .36) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.gold-rule { background: linear-gradient(90deg, hsl(var(--gold)), hsl(var(--gold-light)), transparent); }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.status-dot { box-shadow: 0 0 0 4px currentColor; }
+
+@media (max-width: 1023px) {
+  .desktop-sidebar { display: none; }
+}
