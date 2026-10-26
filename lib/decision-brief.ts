@@ -6,7 +6,9 @@ export function eventOpportunity(event: EventRecord) {
   const investment = /invest|financ|bancabil|capitaux|capital|bailleurs/.test(text);
   const africa = /afri|cameroun|senegal|benin|comor|mauritani|congo|ivoir/.test(text);
   const business = /b2b|entrepren|affaires|econom|partenari|entreprise/.test(text);
-  const tier = diaspora && investment ? 3 : africa && (investment || business) ? 2 : diaspora && business ? 1 : 0;
+  const cultural = /culture|patrimoin|tradition|gastronom|artist|cinema|festival|vodun|concert|exposition/.test(text);
+  const structuredBusiness = /b2b|rendez vous d'affaires|investisseur|financ|capitaux|bailleurs|fonds|levee de fonds|pitch/.test(text);
+  const tier = diaspora && investment && (!cultural || structuredBusiness) ? 3 : africa && (investment || business) ? 2 : diaspora && business ? 1 : 0;
   const reason = tier === 3 ? 'Diaspora et financement réunis dans l’annonce : un point d’entrée pour les partenariats économiques du PEEA.' : tier === 2 ? 'Échanges économiques liés à l’Afrique : une piste pour développer le réseau de partenaires du PEEA.' : tier === 1 ? 'Entrepreneuriat diasporique : une piste pour rencontrer des porteurs de projets.' : 'Lien avec les objectifs du PEEA à préciser avant de mobiliser une délégation.';
   return { tier, reason };
 }
