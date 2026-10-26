@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { normalizeTitle, scoreCandidate } from "../../lib/processing";
+import { normalizeTitle, scoreCandidate, economicEventIdentity } from "../../lib/processing";
 import { getSupabaseAdmin } from "../../lib/supabase-server";
 import { buildPriorityQueries, getSourceCatalog } from "../../lib/discovery-config";
 import { collectOpenAgendaEvents, collectRss, discoverOpenAgendaAgendas, searchBrave, type DiscoveredItem } from "./run";
@@ -82,7 +82,8 @@ async function persistEvent(sourceId: string, item: DiscoveredItem) {
   if (!item.startsAt || !item.title) return false;
   const future = new Date(item.startsAt) >= new Date();
   const classification = scoreCandidate({ title: item.title, description: item.description, city: item.city, future });
-  const identityKey = `${normalizeTitle(item.title)}|${item.startsAt.slice(0, 10)}|${normalizeTitle(item.city ?? "online")}`;
+  const identity = economicEventIdentity({ title: item.title, startsAt: item.startsAt, city: item.city, organizer: item.organizer });
+  const identityKey = identity.key;
   if (!future || classification.score < 40) {
     await supabase.from("events").update({ status: "excluded", relevance: classification.score, updated_at: runAt }).eq("identity_key", identityKey);
     return false;
@@ -96,8 +97,9 @@ async function persistEvent(sourceId: string, item: DiscoveredItem) {
     description: item.description, registrationUrl: item.registrationUrl ?? item.url, sourceUrl: item.url,
     scoreReasons: classification.reasons, countries: item.keywords?.filter(value => /bénin|sénégal|cameroun|maroc|mali|guinée|gabon|ghana|nigeria|congo|tunisie|algérie|togo|rwanda|kenya|afrique/i.test(value)) ?? [],
   };
-  const { data: existingEvent, error: eventReadError } = await supabase.from("events").select("id").eq("identity_key", identityKey).maybeSingle();
+  const { data: matches, error: eventReadError } = await supabase.from("events").select("id,data,identity_key").in("identity_key", [identityKey, identity.legacy]);
   if (eventReadError) throw eventReadError;
+  const existingEvent = matches?.find(row => row.identity_key === identityKey) ?? matches?.find(row => normalizeTitle(row.data?.organizer ?? "") === normalizeTitle(item.organizer ?? ""));
   const eventValues = { identity_key: identityKey, title: item.title, data: eventData, relevance: classification.score, verification: "official", status: "scheduled", is_demo: false, last_verified_at: runAt, updated_at: runAt };
   const { data: event, error } = existingEvent
     ? await supabase.from("events").update(eventValues).eq("id", existingEvent.id).select("id").single()

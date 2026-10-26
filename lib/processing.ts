@@ -41,3 +41,9 @@ export function deduplicateEvents(items: EventRecord[]) {
   }
   return [...seen.values()];
 }
+
+export function economicEventIdentity(input: { title: string; startsAt: string; city?: string; organizer?: string }) {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(input.startsAt));
+  const legacy = `${normalizeTitle(input.title)}|${day}|${normalizeTitle(input.city ?? "online")}`;
+  return { legacy, key: `${legacy}|${normalizeTitle(input.organizer ?? "")}` };
+}

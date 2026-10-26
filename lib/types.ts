@@ -26,7 +26,8 @@ export type PublicationRecord = {
   source: string;
   author: string;
   organization: string;
-  publishedAt: string;
+  publishedAt: string | null;
+  discoveredAt?: string | null;
   title: string;
   excerpt: string;
   eventId: string;
