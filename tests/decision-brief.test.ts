@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { decisionBrief } from '../lib/decision-brief';
+import { decisionBrief, eventOpportunity } from '../lib/decision-brief';
 import type { EventRecord } from '../lib/types';
 const now=Date.parse('2026-10-26T12:00:00Z');
 const event=(id:string,title:string,score=50):EventRecord=>({id,title,score,date:'2026-11-01T10:00:00Z',city:'Paris',region:'',venue:'',organizer:'',category:'',countries:[],description:'',sourceCount:1,verification:'À vérifier',updatedAt:'',scoreReasons:[]});
@@ -15,4 +15,9 @@ it('prioritizes diaspora investment over a higher generic score and excludes pas
 });
 it('does not mark a generic business event as a core PEEA opportunity',()=>{
  expect(decisionBrief([event('generic','Rencontres des entreprises',100)],now).core).toHaveLength(0);
+});
+
+it('does not elevate a primarily cultural diaspora event from a peripheral investment mention',()=>{
+ const cultural={...event('culture','Festival du patrimoine béninois',90),description:'Culture, traditions, gastronomie, diaspora et investissement.'};
+ expect(eventOpportunity(cultural).tier).toBe(2);
 });
