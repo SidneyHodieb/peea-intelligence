@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authorizeExternal } from "@/lib/external-api";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 const dateValue = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]);
@@ -14,8 +13,6 @@ const tableByKind = { participation: "peea_event_participations", contact: "peea
 function clean(value: string | null | undefined) { return value?.trim() || null; }
 
 export async function PATCH(request: Request, context: { params: Promise<{ kind: string; id: string }> }) {
-  const auth = authorizeExternal(request);
-  if (auth.response) return auth.response;
   const { kind, id } = await context.params;
   if (!(kind in schemas) || !z.uuid().safeParse(id).success) return NextResponse.json({ error: { code: "INVALID_TARGET" } }, { status: 404 });
   const typedKind = kind as keyof typeof schemas;

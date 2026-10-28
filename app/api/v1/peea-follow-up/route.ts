@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authorizeExternal, hasExternalAuthorization } from "@/lib/external-api";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 const dateValue = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]);
@@ -33,13 +32,12 @@ type ContactRow = { id: string; participation_id: string | null; full_name: stri
 
 function clean(value: string | null | undefined) { return value?.trim() || null; }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = getSupabaseAdmin();
-    const editor = hasExternalAuthorization(request);
     const [participationsResult, contactsResult, actionsResult] = await Promise.all([
       supabase.from("peea_event_participations").select("*").order("occurred_on", { ascending: false, nullsFirst: false }),
-      supabase.from("peea_relationship_contacts").select(editor ? "id, participation_id, full_name, met_at, organization_or_role, phones, email, peea_referrers, notes, linkedin_note" : "id, participation_id, full_name, met_at, organization_or_role, peea_referrers, notes, linkedin_note").order("full_name", { ascending: true }),
+      supabase.from("peea_relationship_contacts").select("id, participation_id, full_name, met_at, organization_or_role, phones, email, peea_referrers, notes, linkedin_note").order("full_name", { ascending: true }),
       supabase.from("peea_follow_up_actions").select("*, peea_relationship_contacts(full_name)").order("due_date", { ascending: true, nullsFirst: false }),
     ]);
 
@@ -69,7 +67,8 @@ export async function GET(request: Request) {
       fullName: row.full_name,
       metAt: row.met_at,
       organizationOrRole: row.organization_or_role,
-      ...(editor ? { phones: row.phones ?? [], email: row.email } : {}),
+      phones: row.phones ?? [],
+      email: row.email,
       peeaReferrers: row.peea_referrers ?? [],
       notes: row.notes,
       linkedinNote: row.linkedin_note,
@@ -90,7 +89,7 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ data: { participations, contacts, actions }, meta: { mode: "live", editor } });
+    return NextResponse.json({ data: { participations, contacts, actions }, meta: { mode: "live", editor: true } });
   } catch (error) {
     console.error("peea_follow_up_read_failed", error);
     return NextResponse.json({ error: { code: "SUPABASE_ERROR", message: "Lecture du suivi PEEA impossible" } }, { status: 503 });
@@ -98,8 +97,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = authorizeExternal(request);
-  if (auth.response) return auth.response;
   try {
     const parsed = createSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: { code: "VALIDATION_ERROR", details: parsed.error.flatten() } }, { status: 422 });
