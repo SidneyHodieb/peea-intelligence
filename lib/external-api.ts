@@ -5,10 +5,16 @@ import { ExternalWriteError } from "./external-enrichment";
 export function authorizeExternal(request: Request) {
   const token = process.env.EXTERNAL_API_TOKEN ?? process.env.INTERNAL_API_TOKEN;
   if (!token) return { response: NextResponse.json({ error: { code: "AUTH_NOT_CONFIGURED" } }, { status: 503 }) };
+  if (!hasExternalAuthorization(request)) return { response: NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }) };
+  return { actor: createHash("sha256").update(token).digest("hex") };
+}
+
+export function hasExternalAuthorization(request: Request) {
+  const token = process.env.EXTERNAL_API_TOKEN ?? process.env.INTERNAL_API_TOKEN;
+  if (!token) return false;
   const expected = createHash("sha256").update(`Bearer ${token}`).digest();
   const actual = createHash("sha256").update(request.headers.get("authorization") ?? "").digest();
-  if (!timingSafeEqual(expected, actual)) return { response: NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }) };
-  return { actor: createHash("sha256").update(token).digest("hex") };
+  return timingSafeEqual(expected, actual);
 }
 
 export async function externalJson(request: Request) {

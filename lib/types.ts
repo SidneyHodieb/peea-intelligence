@@ -68,6 +68,8 @@ export type PeeaContactRecord = {
   fullName: string;
   metAt: string | null;
   organizationOrRole: string | null;
+  phones?: string[];
+  email?: string | null;
   peeaReferrers: string[];
   notes: string | null;
   linkedinNote: string | null;
