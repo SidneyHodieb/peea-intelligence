@@ -3,19 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity, Bell, Building2, CalendarDays, ChevronDown, ChevronRight, Clock3,
-  DatabaseZap, ExternalLink, FileSearch, Filter, Gauge, LayoutDashboard, MapPin, Menu,
+  CheckCircle2, DatabaseZap, ExternalLink, FileSearch, Filter, Gauge, LayoutDashboard, ListTodo, MapPin, Menu,
   Network, Plus, Radar, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, TrendingUp,
   UsersRound, X,
 } from "lucide-react";
-import type { EventRecord, OrganizationRecord, PublicationRecord, VerificationStatus } from "@/lib/types";
+import type { EventRecord, OrganizationRecord, PeeaActionStatus, PeeaFollowUpData, PublicationRecord, VerificationStatus } from "@/lib/types";
 
 import { decisionBrief, eventOpportunity } from "@/lib/decision-brief";
 
-type View = "Dashboard" | "Agenda" | "Intelligence" | "Partenariats" | "Sources" | "Notifications" | "Administration";
+type View = "Dashboard" | "Agenda" | "Intelligence" | "Suivi PEEA" | "Partenariats" | "Sources" | "Notifications" | "Administration";
 type CollectionHealth = { connectors?: Record<string, string>; catalog?: { sources: number; rss: number }; last_success?: string | null; storage?: { events: number; publications: number; organizations: number } };
 const nav: { label: View; icon: typeof Radar }[] = [
   { label: "Dashboard", icon: LayoutDashboard }, { label: "Agenda", icon: CalendarDays },
-  { label: "Intelligence", icon: FileSearch }, { label: "Partenariats", icon: Network },
+  { label: "Intelligence", icon: FileSearch }, { label: "Suivi PEEA", icon: ListTodo },
+  { label: "Partenariats", icon: Network },
   { label: "Sources", icon: DatabaseZap }, { label: "Notifications", icon: Bell },
   { label: "Administration", icon: Settings2 },
 ];
@@ -113,6 +114,51 @@ function PartnershipsView({ organizations }: { organizations: OrganizationRecord
   return <div><Badge tone="green">CRM d’opportunités</Badge><h2 className="mt-2 font-display text-3xl font-bold">Pipeline partenariats</h2><p className="mt-1 text-sm text-stone-500">Suggestions issues d’indices explicites — toute prise de contact reste humaine.</p><div className="mt-6 grid gap-4 xl:grid-cols-4">{stages.map(stage=><section key={stage} className="rounded-2xl bg-stone-100/70 p-3"><div className="mb-3 flex items-center justify-between px-1"><h3 className="text-xs font-extrabold text-stone-700">{stage}</h3><span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-stone-500">{organizations.filter(o=>o.stage===stage).length}</span></div><div className="space-y-3">{organizations.filter(o=>o.stage===stage).map(o=><article key={o.id} className="card rounded-xl p-4"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-lg bg-[#302009] text-[10px] font-bold text-amber-300">{o.initials}</div><div className="min-w-0"><p className="truncate text-xs font-extrabold">{o.name}</p><p className="text-[10px] text-stone-500">{o.sector}</p></div></div><div className="my-3 h-px bg-stone-100"/><p className="text-[10px] font-semibold text-stone-500">Rôle observé</p><p className="mt-0.5 text-xs text-stone-700">{o.role}</p><div className="mt-3 flex items-center justify-between"><Badge>{o.score}/100</Badge><span className="text-[10px] text-stone-400">{o.eventCount} événement{o.eventCount>1?"s":""}</span></div></article>)}</div></section>)}</div></div>;
 }
 
+const actionStatusLabel: Record<PeeaActionStatus, string> = {
+  waiting: "En attente",
+  in_progress: "En cours",
+  done: "Terminée",
+  cancelled: "Annulée",
+};
+
+function FollowUpView({ query, data }: { query: string; data: PeeaFollowUpData }) {
+  const needle = query.trim().toLowerCase();
+  const participations = data.participations.filter(item => `${item.eventName} ${item.venue ?? ""} ${item.representatives.join(" ")}`.toLowerCase().includes(needle));
+  const contacts = data.contacts.filter(item => `${item.fullName} ${item.metAt ?? ""} ${item.organizationOrRole ?? ""} ${item.peeaReferrers.join(" ")}`.toLowerCase().includes(needle));
+  const actions = data.actions.filter(item => `${item.title} ${item.contactName ?? ""} ${item.owners.join(" ")}`.toLowerCase().includes(needle));
+  const openActions = data.actions.filter(item => item.status === "waiting" || item.status === "in_progress").length;
+  const attended = data.participations.filter(item => item.attended === true).length;
+
+  return <div className="space-y-7">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div><Badge tone="green">Pilotage opérationnel</Badge><h2 className="mt-2 font-display text-3xl font-bold">Des événements aux partenariats</h2><p className="mt-1 max-w-3xl text-sm text-stone-500">Suivez la participation du PEEA, les relations créées sur place et chaque action jusqu’à sa réalisation.</p></div>
+      <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-xs font-bold text-green-800">Données du registre PEEA intégrées</div>
+    </div>
+
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {[[CalendarDays,String(data.participations.length),"Événements suivis","bg-amber-100 text-amber-800"],[CheckCircle2,String(attended),"Présences effectives","bg-green-100 text-green-800"],[UsersRound,String(data.contacts.length),"Relations enregistrées","bg-blue-100 text-blue-800"],[ListTodo,String(openActions),"Actions ouvertes","bg-rose-100 text-rose-800"]].map(([Icon,value,label,tone])=>{const I=Icon as typeof CalendarDays;return <article key={label as string} className="card rounded-2xl p-5"><div className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}><I className="h-5 w-5"/></div><p className="mt-4 text-3xl font-black text-[#302009]">{value as string}</p><p className="text-xs font-bold text-stone-600">{label as string}</p></article>})}
+    </section>
+
+    <section>
+      <div className="mb-4"><h3 className="font-display text-xl font-bold">Participations du PEEA</h3><p className="mt-1 text-xs text-stone-500">Qui devait assister, validation du rendez-vous et retour de terrain.</p></div>
+      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">{participations.map(item => {
+        const appointment = item.appointmentStatus === "validated" ? "Rendez-vous validé" : item.appointmentStatus === "not_validated" ? "Non validé" : item.appointmentStatus === "in_progress" ? "Validation en cours" : "Validation non renseignée";
+        return <article key={item.id} className="card rounded-2xl p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">{item.occurredOn ? new Date(`${item.occurredOn}T12:00:00+01:00`).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}) : item.timeText ?? "Date non renseignée"}</p><h4 className="mt-1 font-bold leading-snug">{item.eventName}</h4></div><Badge tone={item.appointmentStatus === "validated" ? "green" : "gray"}>{appointment}</Badge></div>{item.occurredOn&&item.timeText&&<p className="mt-3 flex items-center gap-2 text-xs text-stone-600"><Clock3 className="h-4 w-4 text-amber-700"/>{item.timeText}</p>}{item.venue&&<p className="mt-2 flex items-start gap-2 text-xs leading-5 text-stone-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"/>{item.venue}</p>}<div className="mt-4 rounded-xl bg-stone-50 p-3"><p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500">Représentants PEEA</p><p className="mt-1 text-xs font-semibold text-stone-700">{item.representatives.length ? item.representatives.join(" · ") : "À désigner"}</p></div>{item.attended!==null&&<p className={`mt-3 text-xs font-bold ${item.attended?"text-green-700":"text-stone-500"}`}>{item.attended?"Présence effective confirmée":"Présence non confirmée"}</p>}{item.comments&&<p className="mt-3 text-xs leading-5 text-stone-600">{item.comments}</p>}</article>;
+      })}</div>
+    </section>
+
+    <section>
+      <div className="mb-4"><h3 className="font-display text-xl font-bold">Relations rencontrées</h3><p className="mt-1 text-xs text-stone-500">Coordonnées, contexte de rencontre et référent interne.</p></div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{contacts.map(contact => <article key={contact.id} className="card rounded-2xl p-5"><div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#302009] text-xs font-black text-amber-300">{contact.fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div><div className="min-w-0"><h4 className="font-bold">{contact.fullName}</h4><p className="mt-0.5 text-xs text-stone-500">{contact.organizationOrRole ?? "Fonction non renseignée"}</p></div></div><div className="mt-4 border-t border-stone-100 pt-4 text-xs text-stone-600"><p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5"/>Rencontré à {contact.metAt ?? "un événement non renseigné"}</p></div><div className="mt-4 rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">Référent PEEA</p><p className="mt-1 text-xs font-semibold">{contact.peeaReferrers.length ? contact.peeaReferrers.join(" · ") : "À attribuer"}</p></div>{contact.notes&&<p className="mt-3 text-xs leading-5 text-stone-600">{contact.notes}</p>}{contact.linkedinNote&&<p className="mt-2 text-[11px] font-semibold text-blue-700">{contact.linkedinNote}</p>}</article>)}</div>
+    </section>
+
+    <section>
+      <div className="mb-4"><h3 className="font-display text-xl font-bold">Actions à mener</h3><p className="mt-1 text-xs text-stone-500">Attribuez les actions et faites progresser leur état.</p></div>
+      <div className="space-y-3">{actions.map(action => <article key={action.id} className="card grid gap-4 rounded-2xl p-5 lg:grid-cols-[1fr_180px_150px]"><div><div className="flex flex-wrap items-center gap-2"><Badge>{actionStatusLabel[action.status]}</Badge>{action.contactName&&<span className="text-[10px] font-bold text-stone-500">{action.contactName}</span>}</div><h4 className="mt-3 text-sm font-bold leading-6">{action.title}</h4>{action.comments&&<p className="mt-1 text-xs leading-5 text-stone-500">{action.comments}</p>}</div><div><p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Responsable</p><p className="mt-2 text-xs font-semibold text-stone-700">{action.owners.length ? action.owners.join(" · ") : "À attribuer"}</p><p className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Échéance</p><p className="mt-1 text-xs font-semibold text-stone-700">{action.dueDate ? new Date(`${action.dueDate}T12:00:00+01:00`).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}) : "À fixer"}</p></div><div><p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">État</p><p className="mt-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-3 text-xs font-bold text-stone-700">{actionStatusLabel[action.status]}</p></div></article>)}</div>
+    </section>
+  </div>;
+}
+
 function SourcesView() {
   const [health, setHealth] = useState<CollectionHealth | null>(null);
   useEffect(() => { fetch("/api/v1/collection/status").then(response => response.json()).then(payload => setHealth(payload.data)).catch(() => setHealth(null)); }, []);
@@ -143,7 +189,7 @@ function EventDrawer({ event, onClose }: { event: EventRecord; onClose: () => vo
 }
 
 export function IntelligenceHub() {
-  const [view,setView] = useState<View>("Dashboard"); const [query,setQuery] = useState(""); const [mobile,setMobile] = useState(false); const [selected,setSelected] = useState<EventRecord|null>(null); const [health,setHealth] = useState<CollectionHealth|null>(null); const [events,setEvents] = useState<EventRecord[]>([]); const [publications,setPublications] = useState<PublicationRecord[]>([]); const [organizations,setOrganizations] = useState<OrganizationRecord[]>([]); const [dataError,setDataError] = useState("");
+  const [view,setView] = useState<View>("Dashboard"); const [query,setQuery] = useState(""); const [mobile,setMobile] = useState(false); const [selected,setSelected] = useState<EventRecord|null>(null); const [health,setHealth] = useState<CollectionHealth|null>(null); const [events,setEvents] = useState<EventRecord[]>([]); const [publications,setPublications] = useState<PublicationRecord[]>([]); const [organizations,setOrganizations] = useState<OrganizationRecord[]>([]); const [followUp,setFollowUp] = useState<PeeaFollowUpData>({participations:[],contacts:[],actions:[]}); const [dataError,setDataError] = useState("");
   useEffect(()=>{const v=localStorage.getItem("peea-view") as View|null;if(v&&nav.some(n=>n.label===v))setView(v)},[]);
   useEffect(()=>{fetch("/api/v1/collection/status").then(response=>response.json()).then(payload=>setHealth(payload.data)).catch(()=>setHealth({connectors:{}}))},[]);
   useEffect(()=>{
@@ -160,14 +206,14 @@ export function IntelligenceHub() {
       } while (cursor);
       return rows;
     }
-    Promise.all([allPages<EventRecord>("/api/v1/events"), allPages<PublicationRecord>("/api/v1/publications"), allPages<OrganizationRecord>("/api/v1/organizations")])
-      .then(([events,publications,organizations])=>{
+    Promise.all([allPages<EventRecord>("/api/v1/events"), allPages<PublicationRecord>("/api/v1/publications"), allPages<OrganizationRecord>("/api/v1/organizations"), fetch("/api/v1/peea-follow-up").then(async response=>{if(!response.ok)throw new Error("Le suivi PEEA est indisponible");const payload:{data:PeeaFollowUpData}=await response.json();return payload.data;})])
+      .then(([events,publications,organizations,followUp])=>{
         setEvents(events.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)));
         setPublications(publications.sort((a,b)=>(b.publishedAt ?? b.discoveredAt ?? "").localeCompare(a.publishedAt ?? a.discoveredAt ?? "")));
-        setOrganizations(organizations); setDataError("");
+        setOrganizations(organizations); setFollowUp(followUp); setDataError("");
       }).catch(error=>setDataError(error instanceof Error?error.message:"Chargement impossible"));
   },[]);
   const go=(v:View)=>{setView(v);localStorage.setItem("peea-view",v);setMobile(false)};
-  const content=useMemo(()=> view==="Dashboard"?<Dashboard query={query} openEvent={setSelected} go={go} events={events} publications={publications} organizations={organizations} health={health}/>:view==="Agenda"?<AgendaView query={query} openEvent={setSelected} events={events}/>:view==="Intelligence"?<IntelligenceView query={query} publications={publications}/>:view==="Partenariats"?<PartnershipsView organizations={organizations}/>:view==="Sources"?<SourcesView/>:<GenericView view={view}/>,[view,query,events,publications,organizations,health]);
+  const content=useMemo(()=> view==="Dashboard"?<Dashboard query={query} openEvent={setSelected} go={go} events={events} publications={publications} organizations={organizations} health={health}/>:view==="Agenda"?<AgendaView query={query} openEvent={setSelected} events={events}/>:view==="Intelligence"?<IntelligenceView query={query} publications={publications}/>:view==="Suivi PEEA"?<FollowUpView query={query} data={followUp}/>:view==="Partenariats"?<PartnershipsView organizations={organizations}/>:view==="Sources"?<SourcesView/>:<GenericView view={view}/>,[view,query,events,publications,organizations,followUp,health]);
   return <div className="min-h-screen"><Sidebar view={view} setView={go} health={health}/>{mobile&&<div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={()=>setMobile(false)}><aside className="sidebar h-full w-72 p-5" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><Logo/><button onClick={()=>setMobile(false)} className="text-white"><X/></button></div><nav className="mt-7 space-y-1">{nav.map(({label,icon:Icon})=><button key={label} onClick={()=>go(label)} className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold ${view===label?"bg-amber-400 text-[#2b1e08]":"text-stone-300"}`}><Icon className="h-4 w-4"/>{label}</button>)}</nav></aside></div>}<main className="lg:pl-64"><Topbar view={view} onMenu={()=>setMobile(true)} query={query} setQuery={setQuery}/><div className="p-4 sm:p-6 lg:p-8">{dataError&&<div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{dataError}</div>}{content}</div></main>{selected&&<EventDrawer event={selected} onClose={()=>setSelected(null)}/>}</div>;
 }
